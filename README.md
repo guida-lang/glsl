@@ -39,7 +39,8 @@ The `parse` function attempts to parse a GLSL shader string and returns a `Resul
 
 - `Ok Syntax.TranslationUnit`: If the shader was parsed successfully, it returns an abstract syntax
   tree (AST) representing the GLSL code.
-- `Err String`: If parsing failed, it returns an error string describing the issue.
+- `Err { position : Int, messages : List String }`: If parsing failed, it returns an error
+  object describing the position where the error occurs, and a list of error messages.
 
 ### Example
 
