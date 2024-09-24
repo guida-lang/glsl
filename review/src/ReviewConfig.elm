@@ -42,6 +42,7 @@ config =
         { document = onlyExposed
         , from = exposedModules
         }
+        |> Rule.ignoreErrorsForFiles [ "src/Language/GLSL/Syntax.elm" ]
     , Docs.ReviewLinksAndSections.rule
     , Docs.ReviewAtDocs.rule
     , Docs.UpToDateReadmeLinks.rule

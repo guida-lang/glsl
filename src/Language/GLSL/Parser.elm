@@ -15,7 +15,6 @@ Haskell parser into the Elm ecosystem.
 import Combine
 import Combine.Char
 import Flip exposing (flip)
-import Hex
 import Language.GLSL.Syntax
     exposing
         ( CaseLabel(..)
@@ -49,6 +48,7 @@ import Language.GLSL.Syntax
         , TypeSpecifierNoPrecision(..)
         , TypeSpecifierNonArray(..)
         )
+import ParseInt
 
 
 try : P a -> P a
@@ -388,13 +388,21 @@ This function attempts to parse a given GLSL shader and returns either the parse
 as a `TranslationUnit` type or an error message if parsing fails.
 
 -}
-parse : String -> Result String TranslationUnit
-parse =
-    Combine.parse
-        (Combine.skipMany blank
-            |> Combine.keep translationUnit
-            |> Combine.ignore Combine.end
-        )
+parse : String -> Result { position : Int, messages : List String } TranslationUnit
+parse str =
+    case Combine.parse program str of
+        Ok ( _, _, res ) ->
+            Ok res
+
+        Err ( _, { position }, ms ) ->
+            Err { position = position, messages = ms }
+
+
+program : Combine.Parser S TranslationUnit
+program =
+    Combine.skipMany blank
+        |> Combine.keep translationUnit
+        |> Combine.ignore Combine.end
 
 
 
@@ -584,12 +592,12 @@ hexadecimal =
                                 Combine.maybe (Combine.Char.oneOf [ 'U', 'u' ])
                                     |> Combine.andThen
                                         (\_ ->
-                                            case Hex.fromString (String.fromList d) of
+                                            case ParseInt.parseIntHex (String.fromList d) of
                                                 Ok val ->
                                                     Combine.succeed (IntConstant Hexadecimal val)
 
                                                 Err err ->
-                                                    Combine.fail err
+                                                    Combine.fail (parseIntErrorToString err)
                                         )
                             )
                     )
@@ -611,12 +619,12 @@ octal =
                                 Combine.maybe (Combine.Char.oneOf [ 'U', 'u' ])
                                     |> Combine.andThen
                                         (\_ ->
-                                            case octFromString (String.fromList d) of
+                                            case ParseInt.parseIntOct (String.fromList d) of
                                                 Ok val ->
                                                     Combine.succeed (IntConstant Octal val)
 
                                                 Err err ->
-                                                    Combine.fail err
+                                                    Combine.fail (parseIntErrorToString err)
                                         )
                             )
                     )
@@ -624,9 +632,17 @@ octal =
         )
 
 
-octFromString : String -> Result String Int
-octFromString _ =
-    Debug.todo "octFromString"
+parseIntErrorToString : ParseInt.Error -> String
+parseIntErrorToString err =
+    case err of
+        ParseInt.InvalidChar char ->
+            "Invalid char: " ++ String.fromChar char
+
+        ParseInt.OutOfRange char ->
+            "Out of range: " ++ String.fromChar char
+
+        ParseInt.InvalidRadix int ->
+            "Invalid radix: " ++ String.fromInt int
 
 
 badOctal : P ()
